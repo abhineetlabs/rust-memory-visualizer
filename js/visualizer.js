@@ -35,6 +35,13 @@ const MemoryVisualizer = (() => {
   let onHoverEntry = null;
   let onClickEntry = null;
 
+  // RSP tracking — these get updated dynamically
+  let rspLine = null;
+  let rspArrow = null;
+  let rspLabel = null;
+  let rbpY = 0;
+  let stackEntryOrder = []; // ordered list of stack entry IDs as they appear in timeline
+
   function init(svgElement, callbacks = {}) {
     svgEl = svgElement;
     onHoverEntry = callbacks.onHoverEntry || (() => {});
@@ -282,16 +289,17 @@ const MemoryVisualizer = (() => {
         };
       });
 
-      // Stack registers — show RBP and RSP for the stack segment
+      // Stack registers — RBP (static) and RSP (dynamic, moves with timeline)
       if (seg === 'stack' && segEntries.length > 0) {
         const firstEntryY = p.y + SEG_HEADER + ENTRY_PAD;
-        const lastEntryY = p.y + SEG_HEADER + ENTRY_PAD + (segEntries.length - 1) * (ENTRY_H + ENTRY_GAP);
         const regX = p.x - 4;
-        const regColor = '#ff9f43'; // amber accent
+        const regColor = '#CE422B'; // Rust orange
 
-        // RBP — base pointer (top of frame)
-        const rbpY = firstEntryY + 2;
-        // Small arrow pointing right
+        // Build ordered list of stack entry IDs for RSP tracking
+        stackEntryOrder = segEntries.map(e => e.id);
+
+        // RBP — base pointer (top of frame, static)
+        rbpY = firstEntryY + 2;
         g.appendChild(el('line', {
           x1: regX - 22, y1: rbpY, x2: regX, y2: rbpY,
           stroke: regColor, 'stroke-width': '1.5', 'stroke-linecap': 'round', opacity: '0.6',
@@ -300,42 +308,39 @@ const MemoryVisualizer = (() => {
           points: `${regX},${rbpY - 3} ${regX + 5},${rbpY} ${regX},${rbpY + 3}`,
           fill: regColor, opacity: '0.6',
         }));
-        const rbpLabel = el('text', {
+        const rbpLbl = el('text', {
           x: regX - 25, y: rbpY + 1,
           fill: regColor, 'font-size': '9', 'font-weight': '700',
           'font-family': "'JetBrains Mono', monospace",
           'dominant-baseline': 'middle', 'text-anchor': 'end', opacity: '0.7',
         });
-        rbpLabel.textContent = 'RBP';
-        g.appendChild(rbpLabel);
+        rbpLbl.textContent = 'RBP';
+        g.appendChild(rbpLbl);
 
-        // RSP — stack pointer (bottom of frame, grows downward)
-        const rspY = lastEntryY + ENTRY_H - 2;
-        g.appendChild(el('line', {
-          x1: regX - 22, y1: rspY, x2: regX, y2: rspY,
-          stroke: regColor, 'stroke-width': '1.5', 'stroke-linecap': 'round', opacity: '0.6',
-        }));
-        g.appendChild(el('polygon', {
-          points: `${regX},${rspY - 3} ${regX + 5},${rspY} ${regX},${rspY + 3}`,
-          fill: regColor, opacity: '0.6',
-        }));
-        const rspLabel = el('text', {
-          x: regX - 25, y: rspY + 1,
+        // RSP — stack pointer (dynamic, starts at RBP = empty frame)
+        // These elements are stored as module vars so moveRSP can update them
+        const initRspY = rbpY; // starts at RBP (no vars pushed yet)
+        rspLine = el('line', {
+          x1: regX - 22, y1: initRspY, x2: regX, y2: initRspY,
+          stroke: regColor, 'stroke-width': '1.5', 'stroke-linecap': 'round', opacity: '0.8',
+        });
+        rspArrow = el('polygon', {
+          points: `${regX},${initRspY - 3} ${regX + 5},${initRspY} ${regX},${initRspY + 3}`,
+          fill: regColor, opacity: '0.8',
+        });
+        rspLabel = el('text', {
+          x: regX - 25, y: initRspY + 1,
           fill: regColor, 'font-size': '9', 'font-weight': '700',
           'font-family': "'JetBrains Mono', monospace",
-          'dominant-baseline': 'middle', 'text-anchor': 'end', opacity: '0.7',
+          'dominant-baseline': 'middle', 'text-anchor': 'end', opacity: '0.9',
         });
         rspLabel.textContent = 'RSP';
+        g.appendChild(rspLine);
+        g.appendChild(rspArrow);
         g.appendChild(rspLabel);
 
-        // Dotted vertical line connecting RBP to RSP (the frame boundary)
-        if (segEntries.length > 1) {
-          g.appendChild(el('line', {
-            x1: regX - 8, y1: rbpY + 6, x2: regX - 8, y2: rspY - 6,
-            stroke: regColor, 'stroke-width': '1', 'stroke-dasharray': '3 4',
-            'stroke-linecap': 'round', opacity: '0.3',
-          }));
-        }
+        // Store regX for moveRSP
+        rspLine._regX = regX;
       }
 
       svgEl.appendChild(g);
@@ -343,6 +348,9 @@ const MemoryVisualizer = (() => {
 
     // Draw connections ON TOP of segments (rendered last = on top)
     drawConnections(entries);
+
+    // Default RSP to bottom of stack (all vars visible = full frame)
+    moveRSP(null);
   }
 
   function drawConnections(entries) {
@@ -515,11 +523,84 @@ const MemoryVisualizer = (() => {
     for (const c of connectionElements) c.classList.remove('highlighted');
   }
 
+  /**
+   * Move RSP to reflect the current execution state.
+   * Pass a stack entry ID to point RSP at the bottom of that entry,
+   * or null to show RSP at the bottom of the full stack frame.
+   */
+  function moveRSP(targetEntryId) {
+    if (!rspLine || !rspArrow || !rspLabel) return;
+    const regX = rspLine._regX;
+    if (regX === undefined) return;
+
+    let newY;
+
+    if (targetEntryId && entryPositions[targetEntryId]) {
+      // RSP points to the bottom of this entry (just pushed)
+      const pos = entryPositions[targetEntryId];
+      newY = pos.y + pos.h - 2;
+    } else if (targetEntryId === undefined) {
+      // No step active — RSP at RBP (empty frame)
+      newY = rbpY;
+    } else {
+      // null = show full frame, RSP at bottom of last stack entry
+      if (stackEntryOrder.length > 0) {
+        const lastId = stackEntryOrder[stackEntryOrder.length - 1];
+        const pos = entryPositions[lastId];
+        if (pos) {
+          newY = pos.y + pos.h - 2;
+        } else {
+          newY = rbpY;
+        }
+      } else {
+        newY = rbpY;
+      }
+    }
+
+    // Animate RSP position
+    rspLine.setAttribute('y1', newY);
+    rspLine.setAttribute('y2', newY);
+    rspArrow.setAttribute('points',
+      `${regX},${newY - 3} ${regX + 5},${newY} ${regX},${newY + 3}`);
+    rspLabel.setAttribute('y', newY + 1);
+  }
+
+  /**
+   * Update RSP based on a timeline step index.
+   * Finds the last stack entry that was allocated by this step.
+   */
+  function updateForStep(stepIndex, timeline) {
+    if (!timeline || stepIndex < 0) {
+      moveRSP(undefined); // RSP = RBP (empty frame)
+      return;
+    }
+
+    // Walk through timeline up to stepIndex, find the last stack entry pushed
+    let lastStackId = null;
+    for (let i = 0; i <= stepIndex && i < timeline.length; i++) {
+      const step = timeline[i];
+      if (step.segment === 'stack' && step.entryId && entryPositions[step.entryId]) {
+        lastStackId = step.entryId;
+      }
+      // Drop steps: if it's a drop segment, we'd move RSP back up
+      if (step.segment === 'drop' && step.entryId) {
+        // Find which stack entry owns this heap entry and remove it
+        // For simplicity, just track the last stack allocation
+      }
+    }
+
+    if (lastStackId) {
+      moveRSP(lastStackId);
+    } else {
+      moveRSP(undefined); // no stack vars yet
+    }
+  }
+
   function el(tag, attrs = {}) {
     const e = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
     return e;
   }
 
-  return { init, render, highlightByLine, highlightById, clearHighlights, SEGMENTS };
+  return { init, render, highlightByLine, highlightById, clearHighlights, moveRSP, updateForStep, SEGMENTS };
 })();

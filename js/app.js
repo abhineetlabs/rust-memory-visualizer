@@ -132,7 +132,6 @@
     if (!step) return;
 
     if (!isActive) {
-      // Deactivating — clear this step's highlights
       if (step.entryId) {
         MemoryVisualizer.highlightById(step.entryId, false);
       }
@@ -150,6 +149,12 @@
 
     if (step.line) {
       highlightEditorLine(step.line, step.segment);
+    }
+
+    // Move RSP to reflect current execution state
+    if (currentAnalysis) {
+      const stepIndex = step.step - 1; // timeline steps are 1-indexed
+      MemoryVisualizer.updateForStep(stepIndex, currentAnalysis.timeline);
     }
   }
 
