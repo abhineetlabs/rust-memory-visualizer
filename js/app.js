@@ -454,11 +454,31 @@
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
 
-    // Auto-hide after delay
+    // Dismiss on next click anywhere outside the tooltip
     clearTimeout(tooltip._hideTimer);
+    // Fallback auto-hide in case user doesn't click
     tooltip._hideTimer = setTimeout(() => {
       tooltip.classList.add('hidden');
-    }, 4000);
+    }, 8000);
+
+    // Use a one-shot listener so it cleans itself up
+    function dismissOnClick(e) {
+      // Small delay so the current click doesn't immediately dismiss
+      setTimeout(() => {
+        tooltip.classList.add('hidden');
+        clearTimeout(tooltip._hideTimer);
+      }, 0);
+      document.removeEventListener('click', dismissOnClick, true);
+    }
+    // Remove any previous listener first
+    if (tooltip._dismissFn) {
+      document.removeEventListener('click', tooltip._dismissFn, true);
+    }
+    tooltip._dismissFn = dismissOnClick;
+    // Attach on next tick so the current click event doesn't trigger it
+    setTimeout(() => {
+      document.addEventListener('click', dismissOnClick, true);
+    }, 0);
   }
 
   // ==========================================
