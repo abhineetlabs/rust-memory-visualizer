@@ -631,15 +631,36 @@ const MemoryVisualizer = (() => {
     svgEl.removeEventListener('mousemove', onDragMove);
     svgEl.removeEventListener('mouseleave', onDragEnd);
     document.removeEventListener('mouseup', onDragEnd);
+    // Touch events for mobile
+    svgEl.removeEventListener('touchstart', onTouchDragStart);
+    svgEl.removeEventListener('touchmove', onTouchDragMove);
+    svgEl.removeEventListener('touchend', onDragEnd);
 
     svgEl.addEventListener('mousedown', onDragStart);
     svgEl.addEventListener('mousemove', onDragMove);
     svgEl.addEventListener('mouseleave', onDragEnd);
     document.addEventListener('mouseup', onDragEnd);
+    svgEl.addEventListener('touchstart', onTouchDragStart, { passive: false });
+    svgEl.addEventListener('touchmove', onTouchDragMove, { passive: false });
+    svgEl.addEventListener('touchend', onDragEnd);
+  }
+
+  function onTouchDragStart(e) {
+    if (e.touches.length !== 1) return;
+    // Synthesize a mouse-like event from the touch
+    const touch = e.touches[0];
+    const synthetic = { target: document.elementFromPoint(touch.clientX, touch.clientY), clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() };
+    onDragStart(synthetic);
+  }
+
+  function onTouchDragMove(e) {
+    if (!dragState || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const synthetic = { clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() };
+    onDragMove(synthetic);
   }
 
   function onDragStart(e) {
-    // Only start drag from segment header (the colored bar at top)
     const target = e.target;
     const segGroup = target.closest('.mem-segment-group');
     if (!segGroup) return;
