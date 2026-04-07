@@ -1,26 +1,15 @@
 /* ============================================
-   Rust Memory Visualizer — "Phosphor" Theme
-   Warm terminal aesthetic, precision tool feel
+   Rust Memory Visualizer — "Ferris" Theme
+   Inspired by Rust's warm orange palette
    ============================================ */
-
-@keyframes subtle-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
 
 @keyframes flow-right {
   to { stroke-dashoffset: -20; }
 }
 
 @keyframes entry-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes segment-fade-in {
@@ -28,36 +17,36 @@
   to { opacity: 1; }
 }
 
-@keyframes grid-fade {
+@keyframes bg-warmth {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 :root {
-  /* Warm dark palette */
-  --bg-0: #0c0c10;
-  --bg-1: #111116;
-  --bg-2: #18181f;
-  --bg-3: #1f1f28;
-  --bg-4: #27272f;
-  --bg-hover: #2a2a35;
-  --border-0: #222230;
-  --border-1: #2e2e3d;
-  --border-2: #3a3a4a;
+  /* Rust-inspired warm palette */
+  --bg-0: #121010;
+  --bg-1: #181414;
+  --bg-2: #1e1a1a;
+  --bg-3: #262020;
+  --bg-4: #2e2626;
+  --bg-hover: #332b2b;
+  --border-0: #2a2222;
+  --border-1: #3a2e2e;
+  --border-2: #4a3c3c;
 
-  /* Warm text hierarchy */
-  --text-0: #eae8e4;
-  --text-1: #b8b5ae;
-  --text-2: #807d76;
-  --text-3: #5a5750;
+  /* Warm text — slightly cream/rust tinted */
+  --text-0: #ede8e2;
+  --text-1: #b5aea5;
+  --text-2: #887f74;
+  --text-3: #5e554c;
 
-  /* Segment colors — distinctive, non-generic */
+  /* Segment colors */
   --seg-stack: #4ecdc4;
   --seg-heap: #ff6b6b;
   --seg-rodata: #c3a6ff;
   --seg-data: #ffd93d;
   --seg-bss: #6bcb77;
-  --seg-text: #7a7a8e;
+  --seg-text: #8a8078;
 
   /* Segment glows */
   --glow-stack: rgba(78, 205, 196, 0.25);
@@ -65,11 +54,12 @@
   --glow-rodata: rgba(195, 166, 255, 0.25);
   --glow-data: rgba(255, 217, 61, 0.25);
   --glow-bss: rgba(107, 203, 119, 0.25);
-  --glow-text: rgba(122, 122, 142, 0.15);
+  --glow-text: rgba(138, 128, 120, 0.15);
 
-  /* Accent */
-  --accent: #ff9f43;
-  --accent-hover: #e68a30;
+  /* Rust accent — the signature Rust orange */
+  --accent: #CE422B;
+  --accent-hover: #b5381f;
+  --accent-light: #e8563c;
   --danger: #ff6b6b;
 
   /* Sizing */
@@ -92,6 +82,10 @@ body {
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
+  /* Subtle warm vignette on the whole page */
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(206, 66, 43, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 90%, rgba(206, 66, 43, 0.03) 0%, transparent 50%);
 }
 
 /* ============================================
@@ -128,7 +122,7 @@ body {
 }
 
 .logo-bracket { color: var(--text-3); }
-.logo-ptr { color: var(--accent); }
+.logo-ptr { color: var(--accent-light); }
 
 .logo h1 {
   font-family: 'Outfit', sans-serif;
@@ -182,14 +176,15 @@ body {
 
 .header-btn.primary {
   background: var(--accent);
-  color: #1a1a1a;
+  color: #fff;
   border-color: var(--accent);
   font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .header-btn.primary:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--accent-light);
+  border-color: var(--accent-light);
 }
 
 .header-btn.primary:active {
@@ -197,9 +192,9 @@ body {
 }
 
 .header-btn.primary kbd {
-  background: rgba(0,0,0,0.15);
-  border-color: rgba(0,0,0,0.2);
-  color: rgba(0,0,0,0.5);
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.6);
 }
 
 .header-btn.icon-btn {
@@ -338,11 +333,11 @@ body {
 }
 
 #code-editor .CodeMirror-cursor {
-  border-left-color: var(--accent);
+  border-left-color: var(--accent-light);
 }
 
 #code-editor .CodeMirror-selected {
-  background: rgba(255, 159, 67, 0.1) !important;
+  background: rgba(206, 66, 43, 0.12) !important;
 }
 
 /* Highlighted lines — colored by segment */
@@ -385,7 +380,7 @@ body {
 .resize-handle.active::after {
   background: var(--accent);
   height: 60px;
-  box-shadow: 0 0 8px rgba(255, 159, 67, 0.3);
+  box-shadow: 0 0 8px rgba(206, 66, 43, 0.35);
 }
 
 /* Horizontal resize handle (for timeline) */
@@ -416,7 +411,7 @@ body {
 .resize-handle-h.active::after {
   background: var(--accent);
   width: 60px;
-  box-shadow: 0 0 8px rgba(255, 159, 67, 0.3);
+  box-shadow: 0 0 8px rgba(206, 66, 43, 0.35);
 }
 
 /* ============================================
@@ -472,15 +467,33 @@ body {
   background: var(--bg-0);
 }
 
-/* Dot-grid background — oscilloscope/blueprint feel */
+/* Visualization background — warm Rust-inspired atmosphere */
 #viz-grid-bg {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, var(--border-0) 1px, transparent 1px);
-  background-size: 24px 24px;
-  opacity: 0;
   pointer-events: none;
-  animation: grid-fade 0.6s 0.3s var(--ease) forwards;
+  opacity: 0;
+  animation: bg-warmth 0.8s 0.2s var(--ease) forwards;
+  /* Subtle crosshatch pattern + warm gradient glow */
+  background:
+    /* Faint warm glow in the center where the action is */
+    radial-gradient(ellipse at 30% 35%, rgba(206, 66, 43, 0.035) 0%, transparent 60%),
+    radial-gradient(ellipse at 75% 25%, rgba(78, 205, 196, 0.02) 0%, transparent 50%),
+    /* Fine diagonal lines — engineering blueprint feel, not dots */
+    repeating-linear-gradient(
+      135deg,
+      transparent,
+      transparent 30px,
+      rgba(206, 66, 43, 0.02) 30px,
+      rgba(206, 66, 43, 0.02) 31px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 30px,
+      rgba(206, 66, 43, 0.015) 30px,
+      rgba(206, 66, 43, 0.015) 31px
+    );
 }
 
 #viz-placeholder {
@@ -506,8 +519,8 @@ body {
 }
 
 .placeholder-icon .ptr-symbol {
-  color: var(--accent);
-  opacity: 0.4;
+  color: var(--accent-light);
+  opacity: 0.5;
 }
 
 #viz-placeholder p {
