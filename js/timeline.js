@@ -132,7 +132,12 @@ const ExecutionTimeline = (() => {
     if (idx < -1) idx = -1;
     if (idx >= steps.length) idx = steps.length - 1;
 
-    // Clear previous highlights
+    // Deactivate previous step first (clear its highlight)
+    if (currentStep >= 0 && currentStep < steps.length) {
+      onStepChange(steps[currentStep], false);
+    }
+
+    // Clear active class from all timeline entries
     const allEntries = entriesContainer?.querySelectorAll('.timeline-entry') || [];
     allEntries.forEach(e => e.classList.remove('active'));
 
@@ -149,7 +154,7 @@ const ExecutionTimeline = (() => {
         }
       });
 
-      // Notify callback
+      // Notify callback — activate new step
       onStepChange(step, true);
     }
 

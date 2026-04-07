@@ -131,17 +131,25 @@
   function handleTimelineStep(step, isActive) {
     if (!step) return;
 
-    // Highlight entry in visualizer
-    if (step.entryId) {
-      MemoryVisualizer.highlightById(step.entryId, isActive);
+    if (!isActive) {
+      // Deactivating — clear this step's highlights
+      if (step.entryId) {
+        MemoryVisualizer.highlightById(step.entryId, false);
+      }
+      clearEditorHighlights();
+      return;
     }
 
-    // Highlight line in editor
-    if (isActive && step.line) {
-      clearEditorHighlights();
+    // Activating — clear everything first, then highlight new step
+    MemoryVisualizer.clearHighlights();
+    clearEditorHighlights();
+
+    if (step.entryId) {
+      MemoryVisualizer.highlightById(step.entryId, true);
+    }
+
+    if (step.line) {
       highlightEditorLine(step.line, step.segment);
-    } else {
-      clearEditorHighlights();
     }
   }
 
