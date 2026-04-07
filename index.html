@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rust Memory Visualizer</title>
 
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <!-- CodeMirror 5 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
@@ -19,35 +24,35 @@
   <header id="app-header">
     <div class="header-left">
       <div class="logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect x="2" y="2" width="24" height="24" rx="4" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="6" y="6" width="7" height="7" rx="1" fill="#3b82f6" opacity="0.8"/>
-          <rect x="15" y="6" width="7" height="7" rx="1" fill="#10b981" opacity="0.8"/>
-          <rect x="6" y="15" width="7" height="7" rx="1" fill="#8b5cf6" opacity="0.8"/>
-          <rect x="15" y="15" width="7" height="7" rx="1" fill="#f59e0b" opacity="0.8"/>
-        </svg>
-        <h1>Rust Memory Visualizer</h1>
+        <div class="logo-mark">
+          <span class="logo-bracket">{</span><span class="logo-ptr">*</span><span class="logo-bracket">}</span>
+        </div>
+        <div class="logo-text">
+          <h1>rustmem<span class="logo-accent">.viz</span></h1>
+        </div>
       </div>
     </div>
     <div class="header-right">
       <div class="example-dropdown">
         <button id="examples-btn" class="header-btn">
           <span>Examples</span>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <path d="M3 5l3 3 3-3"/>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
           </svg>
         </button>
-        <div id="examples-menu" class="dropdown-menu hidden">
-          <!-- Populated by examples.js -->
-        </div>
+        <div id="examples-menu" class="dropdown-menu hidden"></div>
       </div>
       <button id="analyze-btn" class="header-btn primary">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M4 2l10 6-10 6V2z"/>
-        </svg>
-        <span>Analyze</span>
+        Analyze
+        <kbd>&#8984;&#9166;</kbd>
       </button>
-      <button id="help-btn" class="header-btn" title="Keyboard shortcuts & help">?</button>
+      <button id="help-btn" class="header-btn icon-btn" title="Help">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6.5"/>
+          <path d="M6 6.5a2 2 0 1 1 2.5 1.94V10" stroke-linecap="round"/>
+          <circle cx="8" cy="12" r="0.5" fill="currentColor"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -56,8 +61,8 @@
     <!-- Left Panel: Code Editor -->
     <section id="editor-panel">
       <div class="panel-header">
-        <span class="panel-title">Rust Source Code</span>
-        <span class="panel-hint">Ctrl+Enter to analyze</span>
+        <span class="panel-title">source</span>
+        <span class="panel-hint">ctrl+enter to analyze</span>
       </div>
       <div id="code-editor"></div>
     </section>
@@ -68,24 +73,24 @@
     <!-- Right Panel: Memory Visualization -->
     <section id="viz-panel">
       <div class="panel-header">
-        <span class="panel-title">Memory Layout</span>
+        <span class="panel-title">memory layout</span>
         <div class="legend" id="segment-legend">
-          <span class="legend-item" data-segment="stack"><i style="background:#3b82f6"></i>Stack</span>
-          <span class="legend-item" data-segment="heap"><i style="background:#10b981"></i>Heap</span>
-          <span class="legend-item" data-segment="rodata"><i style="background:#8b5cf6"></i>.rodata</span>
-          <span class="legend-item" data-segment="data"><i style="background:#f59e0b"></i>.data</span>
-          <span class="legend-item" data-segment="bss"><i style="background:#6366f1"></i>.bss</span>
-          <span class="legend-item" data-segment="text"><i style="background:#6b7280"></i>.text</span>
+          <span class="legend-item" data-segment="stack"><i></i>Stack</span>
+          <span class="legend-item" data-segment="heap"><i></i>Heap</span>
+          <span class="legend-item" data-segment="rodata"><i></i>.rodata</span>
+          <span class="legend-item" data-segment="data"><i></i>.data</span>
+          <span class="legend-item" data-segment="bss"><i></i>.bss</span>
+          <span class="legend-item" data-segment="text"><i></i>.text</span>
         </div>
       </div>
       <div id="viz-container">
+        <div id="viz-grid-bg"></div>
         <div id="viz-placeholder">
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" opacity="0.3">
-            <rect x="4" y="4" width="24" height="56" rx="4" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 4"/>
-            <rect x="36" y="4" width="24" height="56" rx="4" stroke="#10b981" stroke-width="2" stroke-dasharray="4 4"/>
-          </svg>
-          <p>Paste Rust code and click <strong>Analyze</strong></p>
-          <p class="sub">or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd></p>
+          <div class="placeholder-icon">
+            <span>{</span><span class="ptr-symbol">*</span><span>}</span>
+          </div>
+          <p>paste rust code and hit <strong>analyze</strong></p>
+          <p class="sub"><kbd>ctrl</kbd> + <kbd>enter</kbd></p>
         </div>
         <div id="viz-content" class="hidden">
           <svg id="memory-svg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -97,22 +102,22 @@
   <!-- Bottom Panel: Timeline -->
   <section id="timeline-panel">
     <div class="panel-header">
-      <span class="panel-title">Execution Timeline</span>
+      <span class="panel-title">timeline</span>
       <div class="timeline-controls">
         <button id="timeline-prev" class="timeline-btn" title="Previous step" disabled>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M9 2L4 7l5 5"/></svg>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M8 1.5L3.5 6 8 10.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <span id="timeline-step-display">-</span>
         <button id="timeline-next" class="timeline-btn" title="Next step" disabled>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M5 2l5 5-5 5"/></svg>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4 1.5L8.5 6 4 10.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <button id="timeline-play" class="timeline-btn" title="Auto-play" disabled>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1l9 6-9 6V1z"/></svg>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M3 1.5l7 4.5-7 4.5z"/></svg>
         </button>
       </div>
     </div>
     <div id="timeline-entries">
-      <div class="timeline-placeholder">Timeline will appear after analysis</div>
+      <div class="timeline-placeholder">timeline appears after analysis</div>
     </div>
   </section>
 
@@ -126,7 +131,7 @@
   <div id="help-modal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Rust Memory Visualizer</h2>
+        <h2>rustmem.viz</h2>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
@@ -138,29 +143,24 @@
           <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Analyze code</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Close modals</td></tr>
           <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Step through timeline</td></tr>
-          <tr><td><kbd>Space</kbd></td><td>Play/pause timeline (when focused)</td></tr>
+          <tr><td><kbd>Space</kbd></td><td>Play/pause timeline</td></tr>
         </table>
 
         <h3>How It Works</h3>
-        <p>The analyzer tokenizes your Rust code and applies memory classification rules based on type patterns, declaration context, and Rust's ownership model. It does <strong>not</strong> compile your code — it uses heuristic analysis.</p>
+        <p>The analyzer tokenizes your Rust code and applies heuristic memory classification rules. It does <em>not</em> compile your code.</p>
 
         <h3>Memory Segments</h3>
         <ul>
-          <li><strong style="color:#3b82f6">Stack</strong> — local variables, function parameters, references, struct/enum values</li>
-          <li><strong style="color:#10b981">Heap</strong> — Box, Vec, String, HashMap, Rc, Arc, and other dynamically-sized data</li>
-          <li><strong style="color:#8b5cf6">.rodata</strong> — string literals, const values, immutable statics, vtables</li>
-          <li><strong style="color:#f59e0b">.data</strong> — mutable statics (static mut, interior mutability globals)</li>
-          <li><strong style="color:#6366f1">.bss</strong> — zero-initialized statics (no binary storage cost)</li>
-          <li><strong style="color:#6b7280">.text</strong> — function bodies, method implementations, closure code</li>
+          <li><strong class="seg-stack">Stack</strong> &mdash; local variables, function params, references</li>
+          <li><strong class="seg-heap">Heap</strong> &mdash; Box, Vec, String, HashMap, Rc, Arc</li>
+          <li><strong class="seg-rodata">.rodata</strong> &mdash; string literals, const, immutable statics</li>
+          <li><strong class="seg-data">.data</strong> &mdash; mutable statics</li>
+          <li><strong class="seg-bss">.bss</strong> &mdash; zero-initialized statics</li>
+          <li><strong class="seg-text">.text</strong> &mdash; compiled function code</li>
         </ul>
 
-        <h3>Interactions</h3>
-        <ul>
-          <li>Hover over code to highlight its memory location</li>
-          <li>Hover over memory blocks to highlight source code</li>
-          <li>Click memory blocks for detailed information</li>
-          <li>Use the timeline to step through execution order</li>
-        </ul>
+        <h3>Pointers</h3>
+        <p>Glowing arrows show ownership relationships. A teal line from stack to heap means the stack entry holds a pointer to heap-allocated data. Hover any entry to highlight its connections.</p>
       </div>
     </div>
   </div>
