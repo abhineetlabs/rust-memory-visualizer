@@ -4,7 +4,7 @@
    ============================================ */
 
 @keyframes flow-right {
-  to { stroke-dashoffset: -20; }
+  to { stroke-dashoffset: -16; } /* matches dasharray sum (6+10) for seamless loop */
 }
 
 @keyframes entry-slide-in {
@@ -554,6 +554,7 @@ body {
 #memory-svg {
   width: 100%;
   min-height: 400px;
+  touch-action: none; /* prevent scroll while dragging segments on mobile */
   position: relative;
   z-index: 1;
 }
@@ -594,10 +595,11 @@ body {
   stroke-linecap: round;
   stroke-dasharray: 6 10;
   opacity: 0.5;
+  will-change: stroke-dashoffset; /* GPU-accelerate the animation */
 }
 
 .mem-connection-flow.animated {
-  animation: flow-right 0.7s linear infinite;
+  animation: flow-right 0.8s linear infinite;
 }
 
 .mem-connection-base.highlighted {
@@ -954,11 +956,104 @@ body {
    Responsive
    ============================================ */
 
+/* ============================================
+   Mobile — complete responsive overhaul
+   ============================================ */
+
 @media (max-width: 768px) {
+  /* Header: compress for narrow screens */
+  #app-header {
+    padding: 0 10px;
+    height: 44px;
+    gap: 6px;
+  }
+
+  .logo-mark { font-size: 14px; }
+  .logo h1 { font-size: 14px; }
+  .logo { gap: 6px; }
+
+  .header-btn { padding: 5px 8px; font-size: 11px; }
+  .header-btn kbd { display: none; } /* hide keyboard hints on touch */
+  .header-btn.icon-btn { width: 30px; height: 30px; }
+
+  .panel-hint { display: none; }
+  #reset-layout-btn { display: none; }
+
+  /* Stack panels vertically */
   #app-main { flex-direction: column; }
-  #editor-panel { width: 100%; height: 40%; border-right: none; border-bottom: 1px solid var(--border-0); }
+
+  #editor-panel {
+    width: 100% !important; /* override inline resize styles */
+    height: 35%;
+    min-height: 120px;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border-0);
+  }
+
   .resize-handle { display: none; }
-  #viz-panel { height: 60%; }
-  .legend { gap: 8px; }
-  #timeline-panel { height: 130px; }
+
+  #viz-panel {
+    flex: 1;
+    min-width: unset;
+    min-height: 120px;
+  }
+
+  .panel-header { padding: 4px 10px; height: 28px; }
+  .panel-title { font-size: 10px; }
+
+  .legend { gap: 6px; }
+  .legend-item { font-size: 9px; gap: 3px; }
+  .legend-item i { width: 6px; height: 6px; }
+
+  #viz-container { padding: 10px; }
+
+  /* Timeline: shorter on mobile */
+  .resize-handle-h { display: none; }
+  #timeline-panel {
+    height: 120px !important;
+    min-height: 60px;
+  }
+  #timeline-entries { padding: 4px 8px; }
+  .timeline-entry { font-size: 10px; padding: 4px 6px; gap: 6px; }
+  .timeline-segment-tag { font-size: 8px; padding: 1px 3px; }
+  .timeline-step-num { width: 16px; font-size: 9px; }
+
+  /* CodeMirror: smaller font on mobile */
+  #code-editor .CodeMirror {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* Tooltip: full-width on mobile */
+  #tooltip {
+    max-width: calc(100vw - 20px);
+    left: 10px !important;
+    right: 10px;
+  }
+
+  /* Modal: tighter on mobile */
+  .modal-content { width: 95%; max-height: 85vh; }
+  .modal-body { padding: 14px; font-size: 12px; }
+
+  /* Dropdown: full-width on mobile */
+  .dropdown-menu {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: 50px;
+    min-width: unset;
+    width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Very small phones */
+  .logo-mark { display: none; }
+  .legend { display: none; } /* too cramped, users use tooltip instead */
+
+  #editor-panel { height: 30%; }
+
+  #app-header { height: 40px; }
+  .header-btn { padding: 4px 6px; font-size: 10px; }
 }
