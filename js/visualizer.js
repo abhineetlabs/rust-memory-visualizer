@@ -18,7 +18,7 @@ const MemoryVisualizer = (() => {
     text:   { label: '.text',   color: '#7a7a8e', bg: 'rgba(122,122,142,0.05)', border: 'rgba(122,122,142,0.15)', order: 5 },
   };
 
-  const PAD = 24;
+  const PAD = 50; // extra left margin for RBP/RSP labels
   const SEG_GAP = 24;
   const SEG_HEADER = 34;
   const ENTRY_H = 40;
@@ -281,6 +281,62 @@ const MemoryVisualizer = (() => {
           rx: ex + ew, lx: ex, segment: seg,
         };
       });
+
+      // Stack registers — show RBP and RSP for the stack segment
+      if (seg === 'stack' && segEntries.length > 0) {
+        const firstEntryY = p.y + SEG_HEADER + ENTRY_PAD;
+        const lastEntryY = p.y + SEG_HEADER + ENTRY_PAD + (segEntries.length - 1) * (ENTRY_H + ENTRY_GAP);
+        const regX = p.x - 4;
+        const regColor = '#ff9f43'; // amber accent
+
+        // RBP — base pointer (top of frame)
+        const rbpY = firstEntryY + 2;
+        // Small arrow pointing right
+        g.appendChild(el('line', {
+          x1: regX - 22, y1: rbpY, x2: regX, y2: rbpY,
+          stroke: regColor, 'stroke-width': '1.5', 'stroke-linecap': 'round', opacity: '0.6',
+        }));
+        g.appendChild(el('polygon', {
+          points: `${regX},${rbpY - 3} ${regX + 5},${rbpY} ${regX},${rbpY + 3}`,
+          fill: regColor, opacity: '0.6',
+        }));
+        const rbpLabel = el('text', {
+          x: regX - 25, y: rbpY + 1,
+          fill: regColor, 'font-size': '9', 'font-weight': '700',
+          'font-family': "'JetBrains Mono', monospace",
+          'dominant-baseline': 'middle', 'text-anchor': 'end', opacity: '0.7',
+        });
+        rbpLabel.textContent = 'RBP';
+        g.appendChild(rbpLabel);
+
+        // RSP — stack pointer (bottom of frame, grows downward)
+        const rspY = lastEntryY + ENTRY_H - 2;
+        g.appendChild(el('line', {
+          x1: regX - 22, y1: rspY, x2: regX, y2: rspY,
+          stroke: regColor, 'stroke-width': '1.5', 'stroke-linecap': 'round', opacity: '0.6',
+        }));
+        g.appendChild(el('polygon', {
+          points: `${regX},${rspY - 3} ${regX + 5},${rspY} ${regX},${rspY + 3}`,
+          fill: regColor, opacity: '0.6',
+        }));
+        const rspLabel = el('text', {
+          x: regX - 25, y: rspY + 1,
+          fill: regColor, 'font-size': '9', 'font-weight': '700',
+          'font-family': "'JetBrains Mono', monospace",
+          'dominant-baseline': 'middle', 'text-anchor': 'end', opacity: '0.7',
+        });
+        rspLabel.textContent = 'RSP';
+        g.appendChild(rspLabel);
+
+        // Dotted vertical line connecting RBP to RSP (the frame boundary)
+        if (segEntries.length > 1) {
+          g.appendChild(el('line', {
+            x1: regX - 8, y1: rbpY + 6, x2: regX - 8, y2: rspY - 6,
+            stroke: regColor, 'stroke-width': '1', 'stroke-dasharray': '3 4',
+            'stroke-linecap': 'round', opacity: '0.3',
+          }));
+        }
+      }
 
       svgEl.appendChild(g);
     }
