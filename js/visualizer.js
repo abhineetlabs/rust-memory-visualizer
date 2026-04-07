@@ -338,8 +338,8 @@ const MemoryVisualizer = (() => {
         layer.appendChild(flow);
         connectionElements.push(flow);
 
-        // Connection label
-        if (conn.label) {
+        // Connection label — skip "owns"/"points to" (too noisy), only show custom labels
+        if (conn.label && conn.label !== 'owns' && conn.label !== 'points to') {
           const mx = (fx + tx) / 2;
           const my = (fy + ty) / 2 - 10;
           const lbl = el('text', {
