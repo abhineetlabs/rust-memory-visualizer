@@ -388,6 +388,36 @@ body {
   box-shadow: 0 0 8px rgba(255, 159, 67, 0.3);
 }
 
+/* Horizontal resize handle (between main and timeline) */
+.resize-handle-h {
+  height: 5px;
+  cursor: row-resize;
+  background: transparent;
+  flex-shrink: 0;
+  z-index: 50;
+  position: relative;
+}
+
+.resize-handle-h::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 1px;
+  width: 40px;
+  background: var(--border-1);
+  border-radius: 1px;
+  transition: all 0.15s;
+}
+
+.resize-handle-h:hover::after,
+.resize-handle-h.active::after {
+  background: var(--accent);
+  width: 60px;
+  box-shadow: 0 0 8px rgba(255, 159, 67, 0.3);
+}
+
 /* ============================================
    Visualization Panel
    ============================================ */

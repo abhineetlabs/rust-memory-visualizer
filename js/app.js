@@ -25,6 +25,7 @@
     initTimeline();
     initExamples();
     initResizeHandle();
+    initTimelineResize();
     initHelp();
     initKeyboard();
 
@@ -260,6 +261,48 @@
         if (currentAnalysis) {
           MemoryVisualizer.render(currentAnalysis);
         }
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        handle.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
+  }
+
+  // ==========================================
+  // Timeline Resize Handle
+  // ==========================================
+
+  function initTimelineResize() {
+    const handle = document.getElementById('timeline-resize-handle');
+    const timeline = document.getElementById('timeline-panel');
+    if (!handle || !timeline) return;
+
+    let isResizing = false;
+
+    handle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      handle.classList.add('active');
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const newHeight = window.innerHeight - e.clientY - 5; // 5 for handle
+      const minH = 60;
+      const maxH = window.innerHeight * 0.5;
+
+      if (newHeight >= minH && newHeight <= maxH) {
+        timeline.style.height = newHeight + 'px';
+        if (editor) editor.refresh();
+        if (currentAnalysis) MemoryVisualizer.render(currentAnalysis);
       }
     });
 
