@@ -6,6 +6,8 @@ Built for developers learning Rust's memory model, especially those coming from 
 
 ![Rustviz Screenshot](https://img.shields.io/badge/status-v1-CE422B?style=flat-square) ![No Dependencies](https://img.shields.io/badge/deps-zero-4ecdc4?style=flat-square) ![License MIT](https://img.shields.io/badge/license-MIT-ffd93d?style=flat-square)
 
+![Rustviz](screenshot.jpeg)
+
 ---
 
 ## What It Does
