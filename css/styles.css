@@ -132,8 +132,6 @@ body {
   letter-spacing: -0.03em;
 }
 
-.logo-accent { color: var(--accent); font-weight: 800; }
-
 .header-right {
   display: flex;
   align-items: center;
