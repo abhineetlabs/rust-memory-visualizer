@@ -450,6 +450,7 @@ const RustAnalyzer = (() => {
           reason: 'Box: pointer on stack (8 bytes), data on heap',
           stackSize: 8,
           heapData: 'boxed value',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }],
         };
       }
 
@@ -461,6 +462,7 @@ const RustAnalyzer = (() => {
           reason: 'Vec: (ptr, len, cap) on stack (24 bytes), buffer on heap',
           stackSize: 24,
           heapData: 'dynamic buffer',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }, { name: 'cap', size: 8 }],
         };
       }
 
@@ -487,6 +489,7 @@ const RustAnalyzer = (() => {
           reason: `vec! macro: (ptr, len, cap) on stack (24 bytes), ${sizeNote}`,
           stackSize: 24,
           heapData: sizeNote,
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }, { name: 'cap', size: 8 }],
         };
       }
 
@@ -498,6 +501,7 @@ const RustAnalyzer = (() => {
           reason: 'String: (ptr, len, cap) on stack (24 bytes), UTF-8 buffer on heap',
           stackSize: 24,
           heapData: 'UTF-8 buffer',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }, { name: 'cap', size: 8 }],
         };
       }
 
@@ -508,6 +512,7 @@ const RustAnalyzer = (() => {
           reason: 'Creates owned String: (ptr, len, cap) on stack (24 bytes), buffer on heap',
           stackSize: 24,
           heapData: 'owned string buffer',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }, { name: 'cap', size: 8 }],
         };
       }
 
@@ -519,6 +524,7 @@ const RustAnalyzer = (() => {
           reason: 'format! produces String: (ptr, len, cap) on stack (24 bytes), buffer on heap',
           stackSize: 24,
           heapData: 'formatted string buffer',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }, { name: 'cap', size: 8 }],
         };
       }
 
@@ -532,6 +538,7 @@ const RustAnalyzer = (() => {
             reason: `${heapType}: metadata on stack (${stackSz} bytes), data on heap`,
             stackSize: stackSz,
             heapData: `${heapType} internal storage`,
+            ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'meta', size: stackSz - 8 }],
           };
         }
       }
@@ -549,6 +556,7 @@ const RustAnalyzer = (() => {
           reason: detail,
           stackSize: 8,
           heapData: method === 'clone' ? `shared ${desc} allocation (refcount++)` : `${desc} allocation`,
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }],
         };
       }
 
@@ -559,6 +567,7 @@ const RustAnalyzer = (() => {
           reason: 'Box::pin: Pin<Box<T>> pointer on stack (8 bytes), pinned data on heap',
           stackSize: 8,
           heapData: 'pinned heap allocation',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }],
         };
       }
 
@@ -570,6 +579,7 @@ const RustAnalyzer = (() => {
           reason: `${lock}: lock metadata on stack, protected data on heap (when wrapped in Arc)`,
           stackSize: 8,
           heapData: `${lock}-protected data`,
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }],
         };
       }
 
@@ -596,6 +606,7 @@ const RustAnalyzer = (() => {
           reason: 'Cow::Owned: metadata on stack (24 bytes), owned data on heap',
           stackSize: 24,
           heapData: 'Cow owned data',
+          ptrFields: [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }, { name: 'cap', size: 8 }],
         };
       }
 
@@ -965,12 +976,14 @@ const RustAnalyzer = (() => {
         // Determine segment based on type annotation and RHS
         // RHS classification takes priority when available (it's more specific)
         let segment, reason, size, heapData, extraEntries = [];
+        let ptrFields = null;
 
         if (rhsClassification) {
           if (rhsClassification.segment === 'stack+heap') {
             segment = 'stack';
             reason = rhsClassification.reason;
             size = rhsClassification.stackSize || null;
+            ptrFields = rhsClassification.ptrFields || null;
 
             extraEntries.push({
               id: `heap_${varName}_${line}`,
@@ -989,6 +1002,7 @@ const RustAnalyzer = (() => {
             segment = 'stack';
             reason = 'reference (&str) on stack, literal data in .rodata';
             size = 16; // fat pointer: ptr + len
+            ptrFields = [{ name: 'ptr', size: 8, isPtr: true }, { name: 'len', size: 8 }];
 
             extraEntries.push({
               id: `rodata_${varName}_${line}`,
@@ -1067,6 +1081,7 @@ const RustAnalyzer = (() => {
           details: `${isMut ? 'Mutable' : 'Immutable'} local variable in ${currentFn || 'global'} scope`,
           connections: extraEntries.length > 0 ?
             [{ from: entryId, to: extraEntries[0]?.id, label: extraEntries[0]?.segment === 'heap' ? 'owns' : 'points to' }] : [],
+          ptrFields: ptrFields,
           scope: currentFn,
         });
 

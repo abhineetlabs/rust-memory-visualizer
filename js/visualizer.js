@@ -100,11 +100,17 @@ const MemoryVisualizer = (() => {
     let maxH = 0;
     const segPos = {};
 
+    // Pre-calculate entry heights (taller for entries with ptrFields)
+    const ENTRY_H_PTR = 56; // entries with pointer field boxes
+    function entryHeight(entry) { return entry.ptrFields ? ENTRY_H_PTR : ENTRY_H; }
+
     activeSegs.forEach((seg, idx) => {
       const col = idx % cols;
       const row = Math.floor(idx / cols);
-      const count = groups[seg].length;
-      const h = SEG_HEADER + ENTRY_PAD + count * (ENTRY_H + ENTRY_GAP) + ENTRY_PAD;
+      const segEntries = groups[seg];
+      let h = SEG_HEADER + ENTRY_PAD;
+      for (const e of segEntries) h += entryHeight(e) + ENTRY_GAP;
+      h += ENTRY_PAD;
 
       let rowY = PAD;
       for (let r = 0; r < row; r++) {
@@ -169,8 +175,11 @@ const MemoryVisualizer = (() => {
       g.appendChild(countLabel);
 
       // Entries
+      let entryOffsetY = 0;
       segEntries.forEach((entry, ei) => {
-        const ey = p.y + SEG_HEADER + ENTRY_PAD + ei * (ENTRY_H + ENTRY_GAP);
+        const eh = entryHeight(entry);
+        const ey = p.y + SEG_HEADER + ENTRY_PAD + entryOffsetY;
+        entryOffsetY += eh + ENTRY_GAP;
         const ex = p.x + ENTRY_PAD;
         const ew = p.w - ENTRY_PAD * 2;
 
@@ -182,13 +191,13 @@ const MemoryVisualizer = (() => {
 
         // Entry bg
         eg.appendChild(el('rect', {
-          class: 'mem-entry-bg', x: ex, y: ey, width: ew, height: ENTRY_H,
+          class: 'mem-entry-bg', x: ex, y: ey, width: ew, height: eh,
           fill: 'rgba(12,12,16,0.7)', stroke: cfg.border, 'stroke-width': '1', rx: '4', ry: '4',
         }));
 
         // Left accent bar
         eg.appendChild(el('rect', {
-          x: ex, y: ey + 4, width: '2.5', height: ENTRY_H - 8, fill: cfg.color, rx: '1',
+          x: ex, y: ey + 4, width: '2.5', height: eh - 8, fill: cfg.color, rx: '1',
         }));
 
         // Entry name
@@ -210,10 +219,44 @@ const MemoryVisualizer = (() => {
         typeT.textContent = truncInfo;
         eg.appendChild(typeT);
 
+        // Pointer field boxes (ptr | len | cap)
+        if (entry.ptrFields && entry.ptrFields.length > 0) {
+          const fieldY = ey + 39;
+          const fieldH = 13;
+          const fieldGap = 3;
+          const totalFields = entry.ptrFields.length;
+          const availW = ew - 22;
+          const fieldW = (availW - fieldGap * (totalFields - 1)) / totalFields;
+          const fieldX0 = ex + 12;
+
+          entry.ptrFields.forEach((field, fi) => {
+            const fx = fieldX0 + fi * (fieldW + fieldGap);
+            const isPtr = field.isPtr;
+            const fillColor = isPtr ? cfg.color : 'rgba(255,255,255,0.04)';
+            const fillOpacity = isPtr ? '0.15' : '1';
+            const strokeColor = isPtr ? cfg.color : 'rgba(255,255,255,0.08)';
+
+            eg.appendChild(el('rect', {
+              x: fx, y: fieldY, width: fieldW, height: fieldH,
+              fill: fillColor, opacity: fillOpacity,
+              stroke: strokeColor, 'stroke-width': '0.5', rx: '2', ry: '2',
+            }));
+
+            const ft = el('text', {
+              x: fx + fieldW / 2, y: fieldY + fieldH / 2 + 0.5,
+              fill: isPtr ? cfg.color : '#5a5750', 'font-size': '8', 'font-weight': isPtr ? '600' : '400',
+              'font-family': "'JetBrains Mono', monospace",
+              'dominant-baseline': 'middle', 'text-anchor': 'middle',
+            });
+            ft.textContent = isPtr ? `${field.name} \u2192` : field.name;
+            eg.appendChild(ft);
+          });
+        }
+
         // Line badge
         if (entry.line) {
           const lt = el('text', {
-            x: ex + ew - 6, y: ey + ENTRY_H / 2, fill: '#3a3a4a', 'font-size': '9',
+            x: ex + ew - 6, y: ey + 16, fill: '#3a3a4a', 'font-size': '9',
             'font-family': "'JetBrains Mono', monospace", 'dominant-baseline': 'middle', 'text-anchor': 'end',
           });
           lt.textContent = `L${entry.line}`;
@@ -227,7 +270,7 @@ const MemoryVisualizer = (() => {
           const targetEntry = entries.find(e => e.id === targetSeg) || entries.find(e => e.id === entry.connections[0].to);
           const dotColor = targetEntry ? (SEGMENTS[targetEntry.segment]?.color || cfg.color) : cfg.color;
           const dot = el('circle', {
-            class: 'ptr-dot', cx: ex + ew - 1, cy: ey + ENTRY_H / 2,
+            class: 'ptr-dot', cx: ex + ew - 1, cy: ey + eh / 2,
             r: '4', fill: dotColor, opacity: '0.7',
             'data-id': entry.id,
           });
@@ -238,7 +281,7 @@ const MemoryVisualizer = (() => {
         const isTarget = entries.some(e => e.connections && e.connections.some(c => c.to === entry.id));
         if (isTarget) {
           const dot = el('circle', {
-            class: 'ptr-dot', cx: ex + 1, cy: ey + ENTRY_H / 2,
+            class: 'ptr-dot', cx: ex + 1, cy: ey + eh / 2,
             r: '4', fill: cfg.color, opacity: '0.7',
             'data-id': entry.id,
           });
@@ -252,8 +295,8 @@ const MemoryVisualizer = (() => {
         g.appendChild(eg);
         entryElements[entry.id] = eg;
         entryPositions[entry.id] = {
-          x: ex, y: ey, w: ew, h: ENTRY_H,
-          cx: ex + ew / 2, cy: ey + ENTRY_H / 2,
+          x: ex, y: ey, w: ew, h: eh,
+          cx: ex + ew / 2, cy: ey + eh / 2,
           rx: ex + ew, lx: ex, segment: seg,
         };
       });
