@@ -35,12 +35,18 @@ const MemoryVisualizer = (() => {
   let onHoverEntry = null;
   let onClickEntry = null;
 
-  // RSP tracking — these get updated dynamically
+  // RSP tracking
   let rspLine = null;
   let rspArrow = null;
   let rspLabel = null;
   let rbpY = 0;
-  let stackEntryOrder = []; // ordered list of stack entry IDs as they appear in timeline
+  let stackEntryOrder = [];
+
+  // Drag state
+  let dragState = null; // { segKey, group, startX, startY, offsetX, offsetY }
+  let segmentOffsets = {}; // segKey -> { dx, dy } accumulated drag offset
+  let segmentGroups = {}; // segKey -> SVG <g> element
+  let segBasePositions = {}; // segKey -> { x, y, w, h } original layout position
 
   function init(svgElement, callbacks = {}) {
     svgEl = svgElement;
@@ -54,6 +60,10 @@ const MemoryVisualizer = (() => {
     entryElements = {};
     connectionElements = [];
     entryPositions = {};
+    segmentGroups = {};
+    segBasePositions = {};
+    // Preserve drag offsets across re-renders so segments stay where user put them
+    // (segmentOffsets is NOT reset here)
 
     while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
 
@@ -138,8 +148,18 @@ const MemoryVisualizer = (() => {
       const p = segPos[seg];
       const segEntries = groups[seg];
 
-      const g = el('g', { class: 'mem-segment-group' });
+      // Apply saved drag offset if user previously repositioned this segment
+      const off = segmentOffsets[seg] || { dx: 0, dy: 0 };
+
+      const g = el('g', {
+        class: 'mem-segment-group',
+        'data-seg': seg,
+        transform: `translate(${off.dx}, ${off.dy})`,
+      });
       g.style.animationDelay = `${cfg.order * 0.08}s`;
+
+      segmentGroups[seg] = g;
+      segBasePositions[seg] = { x: p.x, y: p.y, w: p.w, h: p.h };
 
       // Segment bg
       g.appendChild(el('rect', {
@@ -282,10 +302,11 @@ const MemoryVisualizer = (() => {
 
         g.appendChild(eg);
         entryElements[entry.id] = eg;
+        // Positions include drag offset so connections route correctly
         entryPositions[entry.id] = {
-          x: ex, y: ey, w: ew, h: ENTRY_H,
-          cx: ex + ew / 2, cy: ey + ENTRY_H / 2,
-          rx: ex + ew, lx: ex, segment: seg,
+          x: ex + off.dx, y: ey + off.dy, w: ew, h: ENTRY_H,
+          cx: ex + ew / 2 + off.dx, cy: ey + ENTRY_H / 2 + off.dy,
+          rx: ex + ew + off.dx, lx: ex + off.dx, segment: seg,
         };
       });
 
@@ -351,6 +372,9 @@ const MemoryVisualizer = (() => {
 
     // Default RSP to bottom of stack (all vars visible = full frame)
     moveRSP(null);
+
+    // Set up drag handlers
+    initDrag();
   }
 
   function drawConnections(entries) {
@@ -596,11 +620,148 @@ const MemoryVisualizer = (() => {
     }
   }
 
+  // ==========================================
+  // Drag-to-reposition segments
+  // ==========================================
+
+  function initDrag() {
+    if (!svgEl) return;
+    // Remove old listeners if re-rendering
+    svgEl.removeEventListener('mousedown', onDragStart);
+    svgEl.removeEventListener('mousemove', onDragMove);
+    svgEl.removeEventListener('mouseleave', onDragEnd);
+    document.removeEventListener('mouseup', onDragEnd);
+
+    svgEl.addEventListener('mousedown', onDragStart);
+    svgEl.addEventListener('mousemove', onDragMove);
+    svgEl.addEventListener('mouseleave', onDragEnd);
+    document.addEventListener('mouseup', onDragEnd);
+  }
+
+  function onDragStart(e) {
+    // Only start drag from segment header (the colored bar at top)
+    const target = e.target;
+    const segGroup = target.closest('.mem-segment-group');
+    if (!segGroup) return;
+
+    const segKey = segGroup.getAttribute('data-seg');
+    if (!segKey) return;
+
+    // Only drag if clicking on the header area (first few rects, not entry items)
+    const entryGroup = target.closest('.mem-entry-group');
+    if (entryGroup) return; // clicking an entry, not the header
+
+    const base = segBasePositions[segKey];
+    if (!base) return;
+
+    const pt = svgPoint(e);
+    const off = segmentOffsets[segKey] || { dx: 0, dy: 0 };
+
+    dragState = {
+      segKey,
+      group: segGroup,
+      startMouseX: pt.x,
+      startMouseY: pt.y,
+      startDx: off.dx,
+      startDy: off.dy,
+    };
+
+    segGroup.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+
+    const pt = svgPoint(e);
+    const dx = dragState.startDx + (pt.x - dragState.startMouseX);
+    const dy = dragState.startDy + (pt.y - dragState.startMouseY);
+
+    // Update transform
+    dragState.group.setAttribute('transform', `translate(${dx}, ${dy})`);
+
+    // Update stored offset
+    segmentOffsets[dragState.segKey] = { dx, dy };
+
+    // Update entry positions for this segment so connections track
+    const base = segBasePositions[dragState.segKey];
+    if (currentAnalysis) {
+      for (const entry of currentAnalysis.entries) {
+        if (entry.segment !== dragState.segKey) continue;
+        const ep = entryPositions[entry.id];
+        if (!ep) continue;
+        // Recalculate from base position + new offset
+        // We stored base positions as (x without offset) during render
+        // Actually we need the raw positions. Let me recalculate.
+      }
+    }
+    // Simpler: just recompute all entry positions for the dragged segment
+    updateEntryPositionsForSegment(dragState.segKey, dx, dy);
+
+    // Redraw connections live
+    redrawConnections();
+
+    e.preventDefault();
+  }
+
+  function onDragEnd() {
+    if (!dragState) return;
+    dragState.group.style.cursor = '';
+    dragState = null;
+  }
+
+  function updateEntryPositionsForSegment(segKey, dx, dy) {
+    if (!currentAnalysis) return;
+    const base = segBasePositions[segKey];
+    if (!base) return;
+
+    const segEntries = currentAnalysis.entries.filter(e => e.segment === segKey);
+    segEntries.forEach((entry, ei) => {
+      const ey = base.y + SEG_HEADER + ENTRY_PAD + ei * (ENTRY_H + ENTRY_GAP);
+      const ex = base.x + ENTRY_PAD;
+      const ew = base.w - ENTRY_PAD * 2;
+
+      entryPositions[entry.id] = {
+        x: ex + dx, y: ey + dy, w: ew, h: ENTRY_H,
+        cx: ex + ew / 2 + dx, cy: ey + ENTRY_H / 2 + dy,
+        rx: ex + ew + dx, lx: ex + dx, segment: segKey,
+      };
+    });
+  }
+
+  function redrawConnections() {
+    // Remove old connection layer
+    const oldLayer = svgEl.querySelector('.connections-layer');
+    if (oldLayer) oldLayer.remove();
+
+    connectionElements = [];
+    if (currentAnalysis) {
+      drawConnections(currentAnalysis.entries);
+    }
+  }
+
+  function svgPoint(e) {
+    const rect = svgEl.getBoundingClientRect();
+    const viewBox = svgEl.viewBox.baseVal;
+    const scaleX = viewBox.width / rect.width;
+    const scaleY = viewBox.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  /** Reset all segments to their original auto-layout positions */
+  function resetLayout() {
+    segmentOffsets = {};
+    if (currentAnalysis) render(currentAnalysis);
+  }
+
   function el(tag, attrs = {}) {
     const e = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
     return e;
   }
 
-  return { init, render, highlightByLine, highlightById, clearHighlights, moveRSP, updateForStep, SEGMENTS };
+  return { init, render, highlightByLine, highlightById, clearHighlights, moveRSP, updateForStep, resetLayout, SEGMENTS };
 })();

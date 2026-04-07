@@ -546,6 +546,11 @@ body {
 
 #viz-content.hidden { display: none; }
 
+/* Draggable segment headers */
+.mem-segment-group { cursor: grab; }
+.mem-segment-group:active { cursor: grabbing; }
+.mem-entry-group { cursor: pointer; }
+
 #memory-svg {
   width: 100%;
   min-height: 400px;

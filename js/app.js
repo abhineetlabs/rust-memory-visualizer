@@ -83,6 +83,10 @@
       onHoverEntry: handleVizHover,
       onClickEntry: handleVizClick,
     });
+
+    document.getElementById('reset-layout-btn')?.addEventListener('click', () => {
+      MemoryVisualizer.resetLayout();
+    });
   }
 
   function handleVizHover(entry, isHovering) {
