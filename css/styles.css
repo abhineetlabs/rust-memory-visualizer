@@ -388,7 +388,7 @@ body {
   box-shadow: 0 0 8px rgba(255, 159, 67, 0.3);
 }
 
-/* Horizontal resize handle (between main and timeline) */
+/* Horizontal resize handle (for timeline) */
 .resize-handle-h {
   height: 5px;
   cursor: row-resize;
@@ -396,6 +396,7 @@ body {
   flex-shrink: 0;
   z-index: 50;
   position: relative;
+  border-top: 1px solid var(--border-0);
 }
 
 .resize-handle-h::after {
@@ -625,8 +626,8 @@ body {
 
 #timeline-panel {
   height: 170px;
-  min-height: 80px;
-  border-top: 1px solid var(--border-0);
+  min-height: 60px;
+  max-height: 50vh;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;

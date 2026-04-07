@@ -275,13 +275,13 @@
   }
 
   // ==========================================
-  // Timeline Resize Handle
+  // Timeline Resize Handle (vertical)
   // ==========================================
 
   function initTimelineResize() {
     const handle = document.getElementById('timeline-resize-handle');
-    const timeline = document.getElementById('timeline-panel');
-    if (!handle || !timeline) return;
+    const timelinePanel = document.getElementById('timeline-panel');
+    if (!handle || !timelinePanel) return;
 
     let isResizing = false;
 
@@ -295,12 +295,13 @@
 
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
-      const newHeight = window.innerHeight - e.clientY - 5; // 5 for handle
+      const windowH = window.innerHeight;
+      const newHeight = windowH - e.clientY;
       const minH = 60;
-      const maxH = window.innerHeight * 0.5;
+      const maxH = windowH * 0.5;
 
       if (newHeight >= minH && newHeight <= maxH) {
-        timeline.style.height = newHeight + 'px';
+        timelinePanel.style.height = newHeight + 'px';
         if (editor) editor.refresh();
         if (currentAnalysis) MemoryVisualizer.render(currentAnalysis);
       }
