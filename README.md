@@ -25,12 +25,14 @@ You paste Rust code on the left. Rustviz analyzes it and renders an interactive 
 
 ### Key Features
 
+- **Assembly viewer** — real x86-64 assembly from `rustc` via [Compiler Explorer](https://godbolt.org), with syntax highlighting and source-line mapping
+- **Compile validation** — code is compiled against `rustc nightly` on every analyze; green/red status dot shows whether code is valid Rust
 - **Pointer arrows** — glowing animated connections show ownership from stack to heap/rodata
 - **`ptr ->` badges** — entries holding pointers are visually tagged
 - **RBP/RSP registers** — stack pointer moves dynamically as you step through execution
 - **Execution timeline** — step forward/backward through memory operations, watch allocations and drops happen in order
 - **Drag-to-rearrange** — click and drag any segment card to reposition it
-- **Hover cross-highlighting** — hover code to highlight memory, hover memory to highlight code
+- **Three-way cross-highlighting** — hover any panel (editor, memory layout, or assembly) to highlight corresponding lines across all three
 - **Click for details** — click any entry for type, size, segment, and reasoning
 - **8 built-in examples** — basics, ownership, statics, collections, closures, structs, Solana patterns, advanced
 
@@ -46,12 +48,13 @@ Open [http://localhost:8080](http://localhost:8080). No build step, no `npm inst
 
 ## How It Works
 
-Rustviz runs entirely in the browser. There is no backend and no compilation.
+Rustviz runs entirely in the browser. The memory analysis is heuristic-based (no compilation required), while the assembly tab calls the [Godbolt Compiler Explorer API](https://godbolt.org) to compile code with `rustc nightly` and fetch real assembly output.
 
 1. **Tokenizer** — a full Rust tokenizer handles nested comments, raw strings, lifetimes, attributes, macros, and all syntax edge cases
 2. **Analyzer** — walks the token stream and applies heuristic memory classification rules based on type patterns, declaration context, and Rust's ownership semantics
 3. **Visualizer** — renders an interactive SVG memory map with animated connections, glow effects, and draggable segments
 4. **Timeline** — generates a step-by-step execution trace with drop-order analysis (LIFO)
+5. **Assembly** — compiles source via Godbolt API in parallel, filters to user-code-only assembly, and renders with syntax highlighting and source-line mapping
 
 ### What It Handles
 
@@ -86,8 +89,9 @@ Unrecognized patterns are marked as "inferred stack allocation" rather than thro
 |-----------|--------|-----|
 | Editor | CodeMirror 5 | Rust syntax highlighting, lightweight CDN load |
 | Visualization | SVG | Resolution-independent, CSS-animatable, interactive |
+| Assembly | [Godbolt API](https://godbolt.org) | Real `rustc` output, CORS-enabled, free |
 | Fonts | Outfit + DM Sans + JetBrains Mono | Distinctive typography, not generic |
-| Framework | None | Zero build step, zero dependencies |
+| Framework | None | Zero build step, zero local dependencies |
 | Theme | Rust-inspired warm palette | `#CE422B` accent, warm charcoal backgrounds |
 
 ## Project Structure
@@ -98,19 +102,21 @@ css/styles.css          Ferris theme, responsive layout, animations
 js/rust-analyzer.js     Tokenizer + memory classification engine
 js/visualizer.js        SVG renderer, drag system, pointer arrows
 js/timeline.js          Execution timeline with playback
+js/assembly.js          Godbolt API client, assembly renderer, syntax highlighting
 js/examples.js          8 built-in example programs
-js/app.js               Orchestration, events, tooltips
+js/app.js               Orchestration, events, tabs, tooltips
 ```
 
 ## Limitations
 
-This is a **heuristic analyzer**, not a compiler. It has known limitations:
+The memory layout is a **heuristic analyzer**, not a compiler. It has known limitations:
 
-- Does not execute or compile code — classification is based on pattern matching
+- Memory classification is based on pattern matching, not actual compilation — the Assembly tab provides real `rustc` validation as a complement
 - Macro bodies are analyzed based on common patterns (`vec!`, `format!`, `println!`) but custom macros are treated as opaque
 - Complex expressions (chained method calls, nested generics) get best-effort analysis
 - No cross-function analysis — each function's stack frame is analyzed independently
 - Generic type monomorphization is not tracked
+- Assembly tab requires internet access (calls Godbolt API); memory layout works fully offline
 
 ## Future Ideas
 
