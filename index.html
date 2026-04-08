@@ -70,18 +70,32 @@
     <!-- Resize Handle -->
     <div id="resize-handle" class="resize-handle"></div>
 
-    <!-- Right Panel: Memory Visualization -->
+    <!-- Right Panel: Memory Visualization + Assembly -->
     <section id="viz-panel">
       <div class="panel-header">
-        <span class="panel-title">memory layout</span>
-        <button id="reset-layout-btn" class="header-btn" style="padding:3px 8px;font-size:10px;" title="Reset segment positions">reset</button>
-        <div class="legend" id="segment-legend">
-          <span class="legend-item" data-segment="stack"><i></i>Stack</span>
-          <span class="legend-item" data-segment="heap"><i></i>Heap</span>
-          <span class="legend-item" data-segment="rodata"><i></i>.rodata</span>
-          <span class="legend-item" data-segment="data"><i></i>.data</span>
-          <span class="legend-item" data-segment="bss"><i></i>.bss</span>
-          <span class="legend-item" data-segment="text"><i></i>.text</span>
+        <div class="viz-tabs">
+          <button class="viz-tab active" data-tab="memory">memory layout</button>
+          <button class="viz-tab" data-tab="assembly">assembly</button>
+        </div>
+        <!-- Memory tab controls -->
+        <div class="tab-controls" id="memory-tab-controls">
+          <button id="reset-layout-btn" class="header-btn" style="padding:3px 8px;font-size:10px;" title="Reset segment positions">reset</button>
+          <div class="legend" id="segment-legend">
+            <span class="legend-item" data-segment="stack"><i></i>Stack</span>
+            <span class="legend-item" data-segment="heap"><i></i>Heap</span>
+            <span class="legend-item" data-segment="rodata"><i></i>.rodata</span>
+            <span class="legend-item" data-segment="data"><i></i>.data</span>
+            <span class="legend-item" data-segment="bss"><i></i>.bss</span>
+            <span class="legend-item" data-segment="text"><i></i>.text</span>
+          </div>
+        </div>
+        <!-- Assembly tab controls -->
+        <div class="tab-controls hidden" id="asm-tab-controls">
+          <span id="compile-status" class="compile-status"></span>
+          <select id="asm-opt-level" class="asm-opt-select" title="Optimization level">
+            <option value="0" selected>debug (-O0)</option>
+            <option value="2">release (-O2)</option>
+          </select>
         </div>
       </div>
       <div id="viz-container">
@@ -95,6 +109,9 @@
         </div>
         <div id="viz-content" class="hidden">
           <svg id="memory-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div id="asm-content" class="hidden">
+          <div id="asm-container"></div>
         </div>
       </div>
     </section>
@@ -151,7 +168,7 @@
         </table>
 
         <h3>How It Works</h3>
-        <p>The analyzer tokenizes your Rust code and applies heuristic memory classification rules. It does <em>not</em> compile your code.</p>
+        <p>The analyzer tokenizes your Rust code and applies heuristic memory classification rules. The <strong>Assembly</strong> tab fetches real compiler output from <a href="https://godbolt.org" target="_blank" rel="noopener" style="color:var(--accent-light)">Compiler Explorer</a> &mdash; this also validates your code against <code>rustc</code>.</p>
 
         <h3>Memory Segments</h3>
         <ul>
@@ -173,6 +190,7 @@
   <script src="js/rust-analyzer.js"></script>
   <script src="js/visualizer.js"></script>
   <script src="js/timeline.js"></script>
+  <script src="js/assembly.js"></script>
   <script src="js/examples.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -14,6 +14,8 @@
   let editor = null;
   let currentAnalysis = null;
   let highlightedLines = [];
+  let activeTab = 'memory';
+  let asmRequestId = 0;
 
   // ==========================================
   // Initialization
@@ -23,6 +25,8 @@
     initEditor();
     initVisualizer();
     initTimeline();
+    initAssembly();
+    initTabs();
     initExamples();
     initResizeHandle();
     initTimelineResize();
@@ -64,6 +68,9 @@
     editor.on('cursorActivity', () => {
       const line = editor.getCursor().line + 1; // 1-indexed
       highlightVizByLine(line);
+      // Cross-highlight assembly
+      AssemblyViewer.highlightBySourceLine(line, true);
+      setTimeout(() => AssemblyViewer.highlightBySourceLine(line, false), 2000);
     });
 
     // Analyze button
@@ -97,6 +104,9 @@
 
     if (isHovering && entry.line) {
       highlightEditorLine(entry.line, entry.segment);
+      AssemblyViewer.highlightBySourceLine(entry.line, true);
+    } else {
+      AssemblyViewer.highlightBySourceLine(null, false);
     }
   }
 
@@ -123,6 +133,141 @@
   }
 
   // ==========================================
+  // Assembly
+  // ==========================================
+
+  function initAssembly() {
+    const containerEl = document.getElementById('asm-container');
+    if (!containerEl) return;
+
+    AssemblyViewer.init(containerEl, {
+      onHoverLine: handleAsmHover,
+    });
+
+    // Re-compile when optimization level changes
+    document.getElementById('asm-opt-level')?.addEventListener('change', () => {
+      if (editor && editor.getValue().trim()) {
+        fetchAssembly(editor.getValue());
+      }
+    });
+  }
+
+  function handleAsmHover(srcLine, isHovering) {
+    clearEditorHighlights();
+    if (isHovering && srcLine) {
+      highlightEditorLine(srcLine, 'line');
+      MemoryVisualizer.highlightByLine(srcLine, true);
+    } else {
+      MemoryVisualizer.clearHighlights();
+    }
+  }
+
+  async function fetchAssembly(source) {
+    const requestId = ++asmRequestId;
+    const optLevel = document.getElementById('asm-opt-level')?.value || '0';
+
+    updateCompileStatus('loading');
+    AssemblyViewer.showLoading();
+
+    try {
+      const result = await AssemblyViewer.compile(source, optLevel);
+      if (requestId !== asmRequestId) return; // stale request
+      const outcome = AssemblyViewer.render(result);
+
+      if (outcome.success) {
+        updateCompileStatus('success');
+      } else {
+        updateCompileStatus('error', outcome.errors);
+      }
+    } catch (err) {
+      if (requestId !== asmRequestId) return;
+      console.warn('Godbolt compile failed:', err);
+      AssemblyViewer.showOffline();
+      updateCompileStatus('offline');
+    }
+  }
+
+  function updateCompileStatus(status, errors) {
+    const el = document.getElementById('compile-status');
+    if (el) {
+      el.className = 'compile-status';
+      switch (status) {
+        case 'loading':
+          el.classList.add('status-loading');
+          el.innerHTML = '<span class="status-spinner"></span> compiling';
+          el.title = '';
+          break;
+        case 'success':
+          el.classList.add('status-success');
+          el.innerHTML = '&#10003; compiled';
+          el.title = 'Code compiles successfully with rustc';
+          break;
+        case 'error':
+          el.classList.add('status-error');
+          el.innerHTML = '&#10007; errors';
+          el.title = (errors || []).join('\n');
+          break;
+        case 'offline':
+          el.classList.add('status-offline');
+          el.innerHTML = '&#8943; offline';
+          el.title = 'Could not reach Compiler Explorer';
+          break;
+      }
+    }
+
+    // Update dot on assembly tab
+    const asmTab = document.querySelector('.viz-tab[data-tab="assembly"]');
+    if (asmTab) {
+      asmTab.dataset.status = status;
+    }
+  }
+
+  // ==========================================
+  // Tabs
+  // ==========================================
+
+  function initTabs() {
+    document.querySelectorAll('.viz-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+  }
+
+  function switchTab(tabName) {
+    activeTab = tabName;
+
+    // Update tab buttons
+    document.querySelectorAll('.viz-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === tabName);
+    });
+
+    // Toggle controls
+    const memCtrl = document.getElementById('memory-tab-controls');
+    const asmCtrl = document.getElementById('asm-tab-controls');
+    if (memCtrl) memCtrl.classList.toggle('hidden', tabName !== 'memory');
+    if (asmCtrl) asmCtrl.classList.toggle('hidden', tabName !== 'assembly');
+
+    // Toggle content
+    const placeholder = document.getElementById('viz-placeholder');
+    const vizContent = document.getElementById('viz-content');
+    const asmContent = document.getElementById('asm-content');
+
+    if (tabName === 'memory') {
+      asmContent?.classList.add('hidden');
+      if (currentAnalysis) {
+        placeholder?.classList.add('hidden');
+        vizContent?.classList.remove('hidden');
+      } else {
+        placeholder?.classList.remove('hidden');
+        vizContent?.classList.add('hidden');
+      }
+    } else {
+      vizContent?.classList.add('hidden');
+      placeholder?.classList.add('hidden');
+      asmContent?.classList.remove('hidden');
+    }
+  }
+
+  // ==========================================
   // Timeline
   // ==========================================
 
@@ -140,6 +285,7 @@
         MemoryVisualizer.highlightById(step.entryId, false);
       }
       clearEditorHighlights();
+      AssemblyViewer.highlightBySourceLine(null, false);
       return;
     }
 
@@ -153,6 +299,7 @@
 
     if (step.line) {
       highlightEditorLine(step.line, step.segment);
+      AssemblyViewer.highlightBySourceLine(step.line, true);
     }
 
     // Move RSP to reflect current execution state
@@ -172,14 +319,17 @@
     const source = editor.getValue();
     if (!source.trim()) return;
 
+    // 1) Run heuristic analyzer immediately (sync, works offline)
     try {
       currentAnalysis = RustAnalyzer.analyze(source);
 
-      // Show viz panel
+      // Show viz panel content (if on memory tab)
       const placeholder = document.getElementById('viz-placeholder');
       const content = document.getElementById('viz-content');
-      if (placeholder) placeholder.classList.add('hidden');
-      if (content) content.classList.remove('hidden');
+      if (activeTab === 'memory') {
+        if (placeholder) placeholder.classList.add('hidden');
+        if (content) content.classList.remove('hidden');
+      }
 
       // Render visualization
       MemoryVisualizer.render(currentAnalysis);
@@ -198,6 +348,9 @@
         </div>`;
       }
     }
+
+    // 2) Fire Godbolt compilation in parallel (async, populates assembly tab)
+    fetchAssembly(source);
   }
 
   // ==========================================
